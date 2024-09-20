@@ -34,14 +34,14 @@ float humidity = 0;
 float smPercentage=0;
 float ldrPercentage =0;
 
-bool dayLightOn = true;
-bool waterPumpOn = true;
+bool dayLightOn = false;
+bool waterPumpOn = false;
 bool heaterOn = true;
 bool coolerOn = true;
 
-#define TEMPERATURE_THRESHOLD= 35;
-#define LDR_LIMIT 36;
-#define SM_LIMIT 50;
+const int TEMPERATURE_THRESHOLD= 35;
+const int LDR_LIMIT = 36;
+const int SM_LIMIT = 50;
 
 DHT dhtSensor(DHT_PIN,DHT11);
 BlynkTimer timer;
@@ -55,11 +55,26 @@ void sensorRead() {
   smPercentage = ((4095 - smValue) / 4095.0) * 100.0;
   ldrPercentage = ((4095 - lightLevel) / 4095.0) * 100.0;
 
-
+//  HANDLE LIGHT WITH LDR SENSOR VALUE
   if(ldrPercentage < LDR_LIMIT){
-  Blynk.virtualWrite(V0, 255);
+    dayLightOn=true;
+    Blynk.virtualWrite(V7, 255);
+
   }else{
-  Blynk.virtualWrite(V7, 0);
+    dayLightOn=false;
+    Blynk.virtualWrite(V7, 0);
+
+  }
+
+//  HANDLE WATER PUMP WITH SOIL MOISTURE SENSOR VALUE
+  if(smPercentage < SM_LIMIT){
+    waterPumpOn=true;
+    Blynk.virtualWrite(V8, 255);
+
+  }else{
+    waterPumpOn=false;
+    Blynk.virtualWrite(V8, 0);
+
   }
 
 
@@ -99,6 +114,19 @@ void setup() {
 void loop() {
   Blynk.run();
   timer.run();
+   // DAY LIGHT TURN ON AND TURN OFF
+  if(dayLightOn){
+    digitalWrite(DAY_LIGHT_PIN,LOW);
+  }else{
+    digitalWrite(DAY_LIGHT_PIN,HIGH);
 
+  }
 
+   // WATER PUMP TURN ON AND TURN OFF
+  if(waterPumpOn){
+    digitalWrite(DAY_LIGHT_PIN,LOW);
+  }else{
+    digitalWrite(DAY_LIGHT_PIN,HIGH);
+
+  }
 }
