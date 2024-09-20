@@ -1,75 +1,72 @@
 #define BLYNK_PRINT Serial
-#define BLYNK_TEMPLATE_ID "TMPL69r-yXF-O"
-#define BLYNK_TEMPLATE_NAME "Group P11 1"
-#define BLYNK_AUTH_TOKEN "CJTZHTAItg-x9yoAH99yg45YIEHhuauW"
+#define BLYNK_TEMPLATE_ID "TMPL6srUtl_JO"
+#define BLYNK_TEMPLATE_NAME "Group P1 12"
+#define BLYNK_AUTH_TOKEN "kVhLX2rOgfTpoPP-jlXsJ5FWZT323EOS"
 
-#define WIFI_SSID "Im Not A Witch Im Your Wifi ;)"
-#define WIFI_PASSWORD "Walura@458699%"
+#define WIFI_SSID "NuwanthaWifi"
+#define WIFI_PASSWORD "Nuwantha@2004"
 #define WIFI_TIMEOUT_MS 20000
+
 #include <Arduino.h>
 #include <DHT.h>
 #include <Wire.h>
 #include <SPI.h>
-#include "WiFi.h"
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
-#include <LiquidCrystal_I2C.h>
 
-#define SM_PIN 4 // D4 PIN
-#define LDR_PIN 2 // D2 PIN
-#define DHT_PIN 5 // D5 PIN
+// SENSORS PIN DEFINE
+#define DHT_PIN 27 // G27 PIN
+#define LDR_PIN 33 // G33 PIN
+#define SM_PIN 32 // G32 PIN
+
+// ACTUATORS PIN DEFINE
+#define HEATER_PIN 25 // G4 PIN
+#define COOLER_PIN 26 // G5 PIN
+#define DAY_LIGHT_PIN 17 // G17 PIN
+#define WATER_PUMP_PIN 16 // G16 PIN
+
+
+// VARIABLE DEFFINE
+int smValue = 0;
+int lightLevel = 0;
+float temperature = 0;
+float humidity = 0;
+float smPercentage=0;
+float ldrPercentage =0;
+
+bool dayLightOn = true;
+bool waterPumpOn = true;
+bool heaterOn = true;
+bool coolerOn = true;
+
+#define TEMPERATURE_THRESHOLD= 35;
+#define LDR_LIMIT 36;
+#define SM_LIMIT 50;
 
 DHT dhtSensor(DHT_PIN,DHT11);
-LiquidCrystal_I2C lcd(0x01, 16, 2); // SDA -TXD SCL- D22
+BlynkTimer timer;
 
-void connectToWiFi() {
-  Serial.println("Connecting to WiFi...");
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  unsigned long startAttemptTime = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < WIFI_TIMEOUT_MS) {
-    if (WiFi.status() != WL_CONNECTED) {
-      Serial.print(" Failed!");
-      // take action
-    } else {
-      Serial.println("Connected!");
-      Serial.print("Current IP: ");
-      Serial.println(WiFi.localIP());
-    }
+void sensorRead() {
+  smValue = analogRead(SM_PIN);
+  smValue = analogRead(SM_PIN);
+  lightLevel = analogRead(LDR_PIN);
+  temperature = dhtSensor.readTemperature();
+  humidity = dhtSensor.readHumidity();
+  smPercentage = ((4095 - smValue) / 4095.0) * 100.0;
+  ldrPercentage = ((4095 - lightLevel) / 4095.0) * 100.0;
+
+
+  if(ldrPercentage < LDR_LIMIT){
+  Blynk.virtualWrite(V0, 255);
+  }else{
+  Blynk.virtualWrite(V7, 0);
   }
-}
 
-void setup() {
-  Serial.begin(115200);
-  // connectToWiFi();
-  Blynk.begin(BLYNK_AUTH_TOKEN, WIFI_SSID, WIFI_PASSWORD, "blynk.cloud", 80);
-  dhtSensor.begin();
-  
-  // Start I2C communication
-  lcd.init();
-  lcd.noBacklight();
 
-}
-
-void loop() {
-  int smValue = analogRead(SM_PIN);
-  int lightLevel = analogRead(LDR_PIN);
-  float temperature = dhtSensor.readTemperature();
-  float humidity = dhtSensor.readHumidity();
-  
-  
-  float smPercentage = ((4095 - smValue) / 4095.0) * 100.0;
-  float ldrPercentage = ((1900 - lightLevel) / 1900.0) * 100.0;
-  
   Blynk.virtualWrite(V0, temperature);
   Blynk.virtualWrite(V1, humidity);
   Blynk.virtualWrite(V2, ldrPercentage);
   Blynk.virtualWrite(V3, smPercentage);
-
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Temp: ");
-  lcd.print(temperature);
 
   Serial.print("Soil moisture value: ");
   Serial.print(smPercentage);
@@ -83,7 +80,25 @@ void loop() {
   Serial.print(" \t Humidity value: ");
   Serial.print(humidity);
   Serial.println("%");
+}
 
-  delay(2000);
+
+void setup() {
+  Serial.begin(115200);
+  Blynk.begin(BLYNK_AUTH_TOKEN, WIFI_SSID, WIFI_PASSWORD, "blynk.cloud", 80);
+  dhtSensor.begin();
+  pinMode(HEATER_PIN, OUTPUT);
+  pinMode(COOLER_PIN, OUTPUT);
+  pinMode(DAY_LIGHT_PIN, OUTPUT);
+  pinMode(WATER_PUMP_PIN, OUTPUT);
+  timer.setInterval(3000, sensorRead);
+
+
+}
+
+void loop() {
+  Blynk.run();
+  timer.run();
+
 
 }
