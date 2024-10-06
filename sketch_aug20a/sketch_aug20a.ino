@@ -36,8 +36,8 @@ float ldrPercentage =0;
 
 bool dayLightOn = false;
 bool waterPumpOn = false;
-bool heaterOn = true;
-bool coolerOn = true;
+bool heaterOn = false;
+bool coolerOn = false;
 
 const int TEMPERATURE_THRESHOLD= 35;
 const int LDR_LIMIT = 36;
@@ -76,6 +76,16 @@ void sensorRead() {
     Blynk.virtualWrite(V8, 0);
 
   }
+//  HANDLE WATER PUMP WITH SOIL MOISTURE SENSOR VALUE
+  if(smPercentage < SM_LIMIT){
+    waterPumpOn=true;
+    Blynk.virtualWrite(V8, 255);
+
+  }else{
+    waterPumpOn=false;
+    Blynk.virtualWrite(V8, 0);
+
+  }
 
 
   Blynk.virtualWrite(V0, temperature);
@@ -98,6 +108,25 @@ void sensorRead() {
 }
 
 
+void handleActuators(){
+  // DAY LIGHT TURN ON AND TURN OFF
+  if(dayLightOn){
+    digitalWrite(DAY_LIGHT_PIN,LOW);
+  }else{
+    digitalWrite(DAY_LIGHT_PIN,HIGH);
+
+  }
+
+   // WATER PUMP TURN ON AND TURN OFF
+  if(waterPumpOn){
+    digitalWrite(WATER_PUMP_PIN,LOW);
+  }else{
+    digitalWrite(WATER_PUMP_PIN,HIGH);
+
+  }
+
+}
+
 void setup() {
   Serial.begin(115200);
   Blynk.begin(BLYNK_AUTH_TOKEN, WIFI_SSID, WIFI_PASSWORD, "blynk.cloud", 80);
@@ -114,19 +143,5 @@ void setup() {
 void loop() {
   Blynk.run();
   timer.run();
-   // DAY LIGHT TURN ON AND TURN OFF
-  if(dayLightOn){
-    digitalWrite(DAY_LIGHT_PIN,LOW);
-  }else{
-    digitalWrite(DAY_LIGHT_PIN,HIGH);
-
-  }
-
-   // WATER PUMP TURN ON AND TURN OFF
-  if(waterPumpOn){
-    digitalWrite(DAY_LIGHT_PIN,LOW);
-  }else{
-    digitalWrite(DAY_LIGHT_PIN,HIGH);
-
-  }
+  handleActuators();
 }
