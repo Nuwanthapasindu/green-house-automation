@@ -3,14 +3,15 @@
 #define BLYNK_TEMPLATE_NAME "Group P1 12"
 #define BLYNK_AUTH_TOKEN "kVhLX2rOgfTpoPP-jlXsJ5FWZT323EOS"
 
-#define WIFI_SSID "NuwanthaWifi"
-#define WIFI_PASSWORD "Nuwantha@2004"
+#define WIFI_SSID "Bisheka's hotspot"
+#define WIFI_PASSWORD "Bishweer"
 #define WIFI_TIMEOUT_MS 20000
 
 #include <Arduino.h>
 #include <DHT.h>
 #include <Wire.h>
 #include <SPI.h>
+#include "WiFi.h"
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
 
@@ -39,15 +40,48 @@ bool waterPumpOn = false;
 bool heaterOn = false;
 bool coolerOn = false;
 
-const int TEMPERATURE_THRESHOLD= 35;
+int TEMPERATURE_THRESHOLD= 35;
 const int LDR_LIMIT = 36;
 const int SM_LIMIT = 50;
 
 DHT dhtSensor(DHT_PIN,DHT11);
 BlynkTimer timer;
 
+
+int DATA_INTERVAL = 3000L;
+int WiFi_INTERVAL = 60000L;
+
+void connectToWiFi() {
+  Serial.println("Connecting to WiFi...");
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  
+  unsigned long startAttemptTime = millis();
+
+  while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < WIFI_TIMEOUT_MS) {
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("Connection Failed!");
+
+    } else {
+      Serial.println("WiFi Connected!");
+      Serial.print("Current IP: ");
+      Serial.println(WiFi.localIP());
+
+    }
+  }
+}
+
+void WiFiStatus() {
+  if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("WiFi Status: Not Connected! \n");
+
+    } else {
+      Serial.println("WiFi Status: Connected! \n");
+    }
+}
+
 void sensorRead() {
-  smValue = analogRead(SM_PIN);
+    smValue = analogRead(SM_PIN);
   smValue = analogRead(SM_PIN);
   lightLevel = analogRead(LDR_PIN);
   temperature = dhtSensor.readTemperature();
@@ -76,14 +110,20 @@ void sensorRead() {
     Blynk.virtualWrite(V8, 0);
 
   }
-//  HANDLE WATER PUMP WITH SOIL MOISTURE SENSOR VALUE
-  if(smPercentage < SM_LIMIT){
-    waterPumpOn=true;
-    Blynk.virtualWrite(V8, 255);
+//  HANDLE COOLER FAN AND HEATER FAN WITH DHT 11 SENSOR VALUE
+  // eaterOn = false;
+  // coolerOn = false;
+  if(temperature < TEMPERATURE_THRESHOLD){
+    heaterOn = true;
+    coolerOn = false;
+    Blynk.virtualWrite(V6, 255); 
+    Blynk.virtualWrite(V5, 0); 
 
   }else{
-    waterPumpOn=false;
-    Blynk.virtualWrite(V8, 0);
+    heaterOn = false;
+    coolerOn = true;
+    Blynk.virtualWrite(V6, 0); 
+    Blynk.virtualWrite(V5, 255); 
 
   }
 
@@ -93,6 +133,7 @@ void sensorRead() {
   Blynk.virtualWrite(V2, ldrPercentage);
   Blynk.virtualWrite(V3, smPercentage);
 
+  Serial.println(TEMPERATURE_THRESHOLD);
   Serial.print("Soil moisture value: ");
   Serial.print(smPercentage);
   Serial.println("%");
@@ -109,7 +150,7 @@ void sensorRead() {
 
 
 void handleActuators(){
-  // DAY LIGHT TURN ON AND TURN OFF
+   // DAY LIGHT TURN ON AND TURN OFF
   if(dayLightOn){
     digitalWrite(DAY_LIGHT_PIN,LOW);
   }else{
@@ -125,19 +166,42 @@ void handleActuators(){
 
   }
 
+   // HEATER TURN ON AND TURN OFF
+  if(heaterOn){
+    digitalWrite(HEATER_PIN,LOW);
+  }else{
+    digitalWrite(HEATER_PIN,HIGH);
+
+  }
+
+   // COOLER TURN ON AND TURN OFF
+  if(coolerOn){
+    digitalWrite(COOLER_PIN,LOW);
+  }else{
+    digitalWrite(COOLER_PIN,HIGH);
+
+  }
+}
+
+BLYNK_CONNECTED() {
+  Blynk.syncVirtual(V4);
+}
+
+BLYNK_WRITE(V4) {
+  TEMPERATURE_THRESHOLD = param.asInt();
 }
 
 void setup() {
   Serial.begin(115200);
+  connectToWiFi();
   Blynk.begin(BLYNK_AUTH_TOKEN, WIFI_SSID, WIFI_PASSWORD, "blynk.cloud", 80);
   dhtSensor.begin();
+  Blynk.virtualWrite(V4,TEMPERATURE_THRESHOLD);
   pinMode(HEATER_PIN, OUTPUT);
   pinMode(COOLER_PIN, OUTPUT);
   pinMode(DAY_LIGHT_PIN, OUTPUT);
   pinMode(WATER_PUMP_PIN, OUTPUT);
   timer.setInterval(3000, sensorRead);
-
-
 }
 
 void loop() {
