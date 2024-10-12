@@ -3,10 +3,9 @@
 #define BLYNK_TEMPLATE_NAME "Group P1 12"
 #define BLYNK_AUTH_TOKEN "kVhLX2rOgfTpoPP-jlXsJ5FWZT323EOS"
 
-#define WIFI_SSID "Bisheka's hotspot"
-#define WIFI_PASSWORD "Bishweer"
+#define WIFI_SSID "Dialog 4G 346"
+#define WIFI_PASSWORD "7A96F0d1"
 #define WIFI_TIMEOUT_MS 20000
-
 #include <Arduino.h>
 #include <DHT.h>
 #include <Wire.h>
@@ -21,8 +20,8 @@
 #define SM_PIN 32 // G32 PIN
 
 // ACTUATORS PIN DEFINE
-#define HEATER_PIN 26 // G5 PIN
-#define COOLER_PIN 25 // G4 PIN
+#define HEATER_PIN 4 // G5 PIN
+#define COOLER_PIN 5 // G4 PIN
 #define DAY_LIGHT_PIN 17 // G17 PIN
 #define WATER_PUMP_PIN 16 // G16 PIN
 
@@ -81,49 +80,65 @@ void WiFiStatus() {
   }
 }
 
-// Read sensors and update Blynk
+BLYNK_CONNECTED() {
+  Blynk.syncVirtual(V4);
+}
+
+BLYNK_WRITE(V4) {
+  TEMPERATURE_THRESHOLD = param.asInt();
+}
+
 void sensorRead() {
+  // put your main code here, to run repeatedly:
+
   smValue = analogRead(SM_PIN);
   lightLevel = analogRead(LDR_PIN);
   temperature = dhtSensor.readTemperature();
   humidity = dhtSensor.readHumidity();
 
+
   // Convert analog values to percentage
   smPercentage = ((4095 - smValue) / 4095.0) * 100.0;
   ldrPercentage = ((4095 - lightLevel) / 4095.0) * 100.0;
 
-  // Light control using LDR value
-  dayLightOn = (ldrPercentage < LDR_LIMIT);
-  Blynk.virtualWrite(V7, dayLightOn ? 255 : 0);
+    // Water pump control using soil moisture
+  if(smPercentage < SM_LIMIT){
+    digitalWrite(WATER_PUMP_PIN,LOW);
 
-  // Water pump control using soil moisture
-  waterPumpOn = (smPercentage < SM_LIMIT);
-  Blynk.virtualWrite(V8, waterPumpOn ? 255 : 0);
+  Blynk.virtualWrite(V8, 255);
+  }else{
+    digitalWrite(WATER_PUMP_PIN,HIGH);
 
-  // Heater and cooler control based on temperature
-  if (temperature < TEMPERATURE_THRESHOLD) {
-    // Temperature is below the threshold, turn on the heater and turn off the cooler
-    heaterOn = true;
-    coolerOn = false;
-    Serial.println("Heater ON, Cooler OFF");
-    Blynk.virtualWrite(V6, 255); // Indicate heater is ON in the app
-    Blynk.virtualWrite(V5, 0);   // Indicate cooler is OFF in the app
-  } else {
-    // Temperature is above the threshold, turn on the cooler and turn off the heater
-    heaterOn = false;
-    coolerOn = true;
-    Serial.println("Heater OFF, Cooler ON");
-    Blynk.virtualWrite(V6, 0);   // Indicate heater is OFF in the app
-    Blynk.virtualWrite(V5, 255); // Indicate cooler is ON in the app
+  Blynk.virtualWrite(V8,0);
+  }
+    // Light control using LDR value
+  if(ldrPercentage < LDR_LIMIT){
+    digitalWrite(DAY_LIGHT_PIN,LOW);
+    Blynk.virtualWrite(V7,255);
+  }else{
+    digitalWrite(DAY_LIGHT_PIN,HIGH);
+    Blynk.virtualWrite(V7, 0);
+
   }
 
+  // HEATER AND COOLER HANDLING
+    if (temperature < TEMPERATURE_THRESHOLD) {
+    // Temperature is below the threshold, turn on the heater and turn off the cooler
+      Serial.println("Heater ON, Cooler OFF");
+      Blynk.virtualWrite(V6, 255); // Indicate heater is ON in the app
+      Blynk.virtualWrite(V5, 0);   // Indicate cooler is OFF in the app
+      digitalWrite(HEATER_PIN, LOW);
+      digitalWrite(COOLER_PIN, HIGH);
+    } else {
+    // Temperature is above the threshold, turn on the cooler and turn off the heater
+      Serial.println("Heater OFF, Cooler ON");
+      digitalWrite(HEATER_PIN, HIGH);
+      digitalWrite(COOLER_PIN, LOW);
+      Blynk.virtualWrite(V6, 0);   // Indicate heater is OFF in the app
+      Blynk.virtualWrite(V5, 255); // Indicate cooler is ON in the app
+    }
 
-  // Write temperature and humidity to Blynk
-  Blynk.virtualWrite(V0, temperature);
-  Blynk.virtualWrite(V1, humidity);
-  Blynk.virtualWrite(V2, ldrPercentage);
-  Blynk.virtualWrite(V3, smPercentage);
- Serial.println(TEMPERATURE_THRESHOLD);
+
   Serial.print("Soil moisture value: ");
   Serial.print(smPercentage);
   Serial.println("%");
@@ -137,51 +152,38 @@ void sensorRead() {
   Serial.print(humidity);
   Serial.println("%");
   Serial.println("Sensor readings updated");
-}
 
-// Control actuators
-void handleActuators() {
-  // Control daylight
-  digitalWrite(DAY_LIGHT_PIN, dayLightOn ? LOW : HIGH);
-  
-  // Control water pump
-  digitalWrite(WATER_PUMP_PIN, waterPumpOn ? LOW : HIGH);
+    // Write temperature and humidity to Blynk
+  Blynk.virtualWrite(V0, temperature);
+  Blynk.virtualWrite(V1, humidity);
+  Blynk.virtualWrite(V2, ldrPercentage);
+  Blynk.virtualWrite(V3, smPercentage);
+  Serial.println(TEMPERATURE_THRESHOLD);
 
-  // Control heater and cooler
-  digitalWrite(HEATER_PIN, heaterOn ? LOW : HIGH);
-  digitalWrite(COOLER_PIN, coolerOn ? LOW : HIGH);
-}
-
-// Sync temperature threshold from Blynk
-BLYNK_CONNECTED() {
-  Blynk.syncVirtual(V4);
-}
-
-BLYNK_WRITE(V4) {
-  TEMPERATURE_THRESHOLD = param.asInt();
 }
 
 void setup() {
-  Serial.begin(9600);
-  connectToWiFi();
-  Blynk.begin(BLYNK_AUTH_TOKEN, WIFI_SSID, WIFI_PASSWORD);
-
-  dhtSensor.begin();
   pinMode(HEATER_PIN, OUTPUT);
   pinMode(COOLER_PIN, OUTPUT);
   pinMode(DAY_LIGHT_PIN, OUTPUT);
   pinMode(WATER_PUMP_PIN, OUTPUT);
 
+  // put your setup code here, to run once:
+  Serial.begin(115200);
+  connectToWiFi();
+  Blynk.begin(BLYNK_AUTH_TOKEN, WIFI_SSID, WIFI_PASSWORD);
+
+  dhtSensor.begin();
+
+
   // Sync initial temperature threshold
   Blynk.virtualWrite(V4, TEMPERATURE_THRESHOLD);
 
   // Set up a timer to read sensors every 3 seconds
-  timer.setInterval(3000, sensorRead);
+  timer.setInterval(3000L, sensorRead);
 }
 
 void loop() {
   Blynk.run();
   timer.run();
-  sensorRead();
-  handleActuators();  // Control actuators based on sensor data
 }
