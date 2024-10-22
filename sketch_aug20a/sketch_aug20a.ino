@@ -1,10 +1,10 @@
 #define BLYNK_PRINT Serial
-#define BLYNK_TEMPLATE_ID "TMPL6srUtl_JO"
-#define BLYNK_TEMPLATE_NAME "Group P1 12"
-#define BLYNK_AUTH_TOKEN "kVhLX2rOgfTpoPP-jlXsJ5FWZT323EOS"
+#define BLYNK_TEMPLATE_ID ""
+#define BLYNK_TEMPLATE_NAME ""
+#define BLYNK_AUTH_TOKEN ""
 
-#define WIFI_SSID "Dialog 4G 346"
-#define WIFI_PASSWORD "7A96F0d1"
+#define WIFI_SSID ""
+#define WIFI_PASSWORD ""
 #define WIFI_TIMEOUT_MS 20000
 #include <Arduino.h>
 #include <DHT.h>
